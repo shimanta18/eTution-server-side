@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 
 const app = express();
@@ -31,8 +31,10 @@ async function run() {
 
     const database = client.db("tuitionDB"); 
     const userCollection = database.collection("users");
+    const tuitionCollection = database.collection("tutions")
 
-    
+    // Routes section 
+
     app.post("/api/users/save", async (req, res)=> {
       try {
         const { uid, email, name, role, photoURL } = req.body;
@@ -69,11 +71,13 @@ async function run() {
             photoURL,
             createdAt: new Date(),
           };
-          const result = await userCollection.insertOne(newUser);
-          console.log(" User created");
+          const result = await userCollection.updateOne(query, updateDoc, options);
+          
           return res.status(201).json({ message: "User created", result });
         }
-      } catch (error) {
+      } 
+      
+      catch (error) {
         console.error(" Error saving user:", error);
         res.status(500).json({ error: "Internal server error" });
       }
@@ -83,6 +87,7 @@ async function run() {
     app.get("/api/users/:uid", async (req, res) => { 
       try {
         const user = await userCollection.findOne({ uid: req.params.uid }); 
+        
         
         if (!user) {
           console.log(" User not found:", req.params.uid);
@@ -98,6 +103,52 @@ async function run() {
         res.status(500).json({ error: "Server error" });
       }
     }); 
+
+    //Tution
+    app.post("/api/tuitions", async(req,res)=>{
+      try{
+        const tuitionData = req.body 
+        const result = await tuitionCollection.insertOne(tuitionData)
+        res.status(201).json(result)
+      }
+
+      catch(error){
+        console.log("Error posting tuition:", error);
+        res.status(500).json({error:"Failed to post tuition"})
+        
+      }
+    })
+
+    app.get("/api/tuitions/student/:uid", async(req,res)=>{
+      try{
+        const query = {studentId:req.params.uid}
+        const result = await tuitionCollection.find(query).toArray()
+        res.json(result)
+      }
+
+      catch(error){
+        res.status(500).json({ error: "Failed to fetch tuitions" });
+      }
+    })
+
+    // Delete a Tuition
+
+    app.delete("/api/tuitions/:id", async(req,res)=>{
+      try{
+        const id= req.params.id
+        if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "Invalid tuition ID format" });
+    }
+        const query = { _id: new ObjectId(id) };
+        const result = await tuitionCollection.deleteOne(query);
+        res.send(result);
+      }
+      catch(error){
+        console.error("Delete error:",error);
+        
+        res.status(500).json({ error: "Failed to delete tuition" });
+      }
+    })
 
     // Get All Users
     app.get('/api/users', async (req, res) => {
