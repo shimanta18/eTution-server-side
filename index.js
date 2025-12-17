@@ -37,32 +37,39 @@ async function run() {
 
     app.post("/api/users/save", async (req, res)=> {
       try {
+
+        console.log('Received user data:', req.body)
         const { uid, email, name, role, photoURL } = req.body;
 
-        if(!uid||!email) {
+        if(!uid||!email|| !name || !role) {
+          console.log('Missing required fields');
           
           
           return res.status(400).json({ error: "uid and email are required" });
+          error: "Missing required fields: uid, email, name, and role are required" 
         }
 
-        console.log("Saving user:", { uid, email, name, role });
+
 
         const existingUser = await userCollection.findOne({ uid });
 
         if (existingUser) {
+          console.log(' Updating existing user:', uid);
           const result = await userCollection.updateOne(
             { uid },
             {
-              $set: {name,role,photoURL,
+              $set: {
+                name,
+                role,
+                photoURL,
                 updatedAt: new Date(),
               },
             }
           );
-
-
-          console.log(" User updated");
+          console.log(' User updated');
           return res.json({ message: "User updated", result });
         } else {
+          console.log(' Creating new user:', uid);
           const newUser = {
             uid,
             email,
@@ -71,15 +78,13 @@ async function run() {
             photoURL,
             createdAt: new Date(),
           };
-          const result = await userCollection.updateOne(query, updateDoc, options);
-          
+          const result = await userCollection.insertOne(newUser);
+          console.log(' User created');
           return res.status(201).json({ message: "User created", result });
         }
-      } 
-      
-      catch (error) {
+      } catch (error) {
         console.error(" Error saving user:", error);
-        res.status(500).json({ error: "Internal server error" });
+        res.status(500).json({ error: error.message || "Internal server error" });
       }
     });
 
@@ -150,6 +155,82 @@ async function run() {
       }
     })
 
+    app.get('/api/tuitions/available', async(req,res)=>{
+      try{
+        const database= client.db("tuitionDB")
+        const tuitionsCollection = database.collection("tuitions");
+
+        const tuitions = await tuitionsCollection
+        .find({status:'PENDING'})
+         .sort({ postedAt: -1 })
+      .toArray();
+
+      res.json(tuitions);
+      }
+      catch(error){
+console.error ('Error fetching available tuitions:', error);
+res.status(500).json({ error: 'Server error' });
+      }
+    })
+
+    app.post('/api/applications', async (req, res) => {
+  try {
+    const database = client.db("tuitionDB");
+    const applicationsCollection = database.collection("applications");
+    
+    // Check if already applied
+    const existingApplication = await applicationsCollection.findOne({
+      tuitionId: req.body.tuitionId,
+      tutorId: req.body.tutorId
+    });
+
+    if (existingApplication) {
+      return res.status(400).json({ error: 'Already applied to this tuition' });
+    }
+
+    const result = await applicationsCollection.insertOne(req.body);
+    res.status(201).json({ message: 'Application submitted', result });
+  } catch (error) {
+    console.error('Error submitting application:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+//  Tutor's applications
+app.get('/api/applications/tutor/:tutorId', async (req, res) => {
+  try {
+    const database = client.db("tuitionDB");
+    const applicationsCollection = database.collection("applications");
+    
+    const applications = await applicationsCollection
+      .find({ tutorId: req.params.tutorId })
+      .sort({ appliedAt: -1 })
+      .toArray();
+    
+    res.json(applications);
+  } catch (error) {
+    console.error('Error fetching applications:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+//  Tutor's students
+app.get('/api/students/tutor/:tutorId', async (req, res) => {
+  try {
+    const database = client.db("tuitionDB");
+    const studentsCollection = database.collection("students");
+    
+    const students = await studentsCollection
+      .find({ tutorId: req.params.tutorId })
+      .toArray();
+    
+    res.json(students);
+  } catch (error) {
+    console.error('Error fetching students:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
     // Get All Users
     app.get('/api/users', async (req, res) => {
       try {
@@ -177,7 +258,9 @@ async function run() {
     await client.db("admin").command({ ping: 1 });
     console.log(" MongoDB ping successful");
 
-  } catch (error) {
+  } 
+  
+  catch (error) {
     console.error(" MongoDB connection error:", error);
   }
 }
