@@ -214,6 +214,279 @@ app.get('/api/applications/tutor/:tutorId', async (req, res) => {
   }
 });
 
+//payment system
+
+app.post('/api/payments', async (req, res) => {
+  try {
+    const database = client.db("tuitionDB");
+    const paymentsCollection = database.collection("payments");
+    const tutorsCollection = database.collection("users");
+
+    const paymentData = {
+      ...req.body,
+      paidAt: new Date().toISOString(),
+      status: 'COMPLETED'
+    };
+const result = await paymentsCollection.insertOne(paymentData);
+
+await tutorsCollection.updateOne(
+      { uid: req.body.tutorId },
+      { 
+        $inc: { totalEarnings: parseFloat(req.body.amount) }
+      }
+    );
+
+    res.status(201).json({ message: 'Payment recorded', result });
+  } catch (error) {
+    console.error('Error recording payment:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+app.get('/api/earnings/tutor/:tutorId', async (req, res) => {
+  try {
+    const database = client.db("tuitionDB");
+    const paymentsCollection = database.collection("payments");
+
+    const now = new Date();
+    const firstDayThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const firstDayLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const lastDayLastMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+
+    // This month's earnings
+    const thisMonthEarnings = await paymentsCollection.aggregate([
+      {
+        $match: {
+          tutorId: req.params.tutorId,
+          paidAt: { $gte: firstDayThisMonth.toISOString() }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$amount" }
+        }
+      }
+    ]).toArray();
+
+    // Last month's earnings
+    const lastMonthEarnings = await paymentsCollection.aggregate([
+      {
+        $match: {
+          tutorId: req.params.tutorId,
+          paidAt: { 
+            $gte: firstDayLastMonth.toISOString(),
+            $lte: lastDayLastMonth.toISOString()
+          }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$amount" }
+        }
+      }
+    ]).toArray();
+
+    // Total earnings
+    const totalEarnings = await paymentsCollection.aggregate([
+      {
+        $match: { tutorId: req.params.tutorId }
+      },
+      {
+        $group: {
+          _id: null,
+          total: { $sum: "$amount" }
+        }
+      }
+    ]).toArray();
+
+    // Recent transactions
+    const recentTransactions = await paymentsCollection
+      .find({ tutorId: req.params.tutorId })
+      .sort({ paidAt: -1 })
+      .limit(10)
+      .toArray();
+
+    res.json({
+      thisMonth: thisMonthEarnings[0]?.total || 0,
+      lastMonth: lastMonthEarnings[0]?.total || 0,
+      total: totalEarnings[0]?.total || 0,
+      recentTransactions
+    });
+  } catch (error) {
+    console.error('Error fetching earnings:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Update application status
+app.patch('/api/applications/:id/status', async (req, res) => {
+  try {
+    const { ObjectId } = require('mongodb');
+    const database = client.db("tuitionDB");
+    const applicationsCollection = database.collection("applications");
+    const tuitionsCollection = database.collection("tuitions");
+
+    const { status } = req.body;
+
+    const result = await applicationsCollection.updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { 
+        $set: { 
+          status,
+          updatedAt: new Date().toISOString()
+        } 
+      }
+    );
+
+    // If approved then update tuition status
+    if (status === 'ACCEPTED') {
+      const application = await applicationsCollection.findOne({ 
+        _id: new ObjectId(req.params.id) 
+      });
+      
+      if (application) {
+        await tuitionsCollection.updateOne(
+          { _id: new ObjectId(application.tuitionId) },
+          { $set: { status: 'APPROVED', assignedTutorId: application.tutorId } }
+        );
+      }
+    }
+
+    res.json({ message: 'Application status updated', result });
+  } catch (error) {
+    console.error('Error updating application:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get tutor's ongoing tuitions approved applications
+app.get('/api/tuitions/ongoing/:tutorId', async (req, res) => {
+  try {
+    const database = client.db("tuitionDB");
+    const tuitionsCollection = database.collection("tuitions");
+
+    const ongoingTuitions = await tuitionsCollection
+      .find({ 
+        assignedTutorId: req.params.tutorId,
+        status: 'APPROVED'
+      })
+      .toArray();
+
+    res.json(ongoingTuitions);
+  } 
+  
+  
+  catch (error) {
+    console.error('Error fetching ongoing tuitions:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get application by ID
+app.get('/api/applications/:id', async (req, res) => {
+  try {
+    const { ObjectId } = require('mongodb');
+    const database = client.db("tuitionDB");
+    const applicationsCollection = database.collection("applications");
+
+    const application = await applicationsCollection.findOne({
+      _id: new ObjectId(req.params.id)
+    });
+
+    if (!application) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+
+    res.json(application);
+  } 
+  
+  catch (error) {
+    console.error('Error fetching application:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Update application
+app.put('/api/applications/:id', async (req, res) => {
+  try {
+    const { ObjectId } = require('mongodb');
+    const database = client.db("tuitionDB");
+    const applicationsCollection = database.collection("applications");
+
+    const result = await applicationsCollection.updateOne(
+      { _id: new ObjectId(req.params.id) },
+      { 
+        $set: { 
+          ...req.body,
+          updatedAt: new Date().toISOString()
+        } 
+      }
+    );
+
+    res.json({ message: 'Application updated', result });
+  } catch (error) {
+    console.error('Error updating application:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Delete application only if pending
+app.delete('/api/applications/:id', async (req, res) => {
+  try {
+    const { ObjectId } = require('mongodb');
+    const database = client.db("tuitionDB");
+    const applicationsCollection = database.collection("applications");
+
+    const application = await applicationsCollection.findOne({
+      _id: new ObjectId(req.params.id)
+    });
+
+    if (!application) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+
+    if (application.status !== 'PENDING') {
+      return res.status(400).json({ 
+        error: 'Cannot delete application that is not pending' 
+      });
+    }
+
+    const result = await applicationsCollection.deleteOne({
+      _id: new ObjectId(req.params.id)
+    });
+
+    res.json({ message: 'Application deleted', result });
+  } catch (error) {
+    console.error('Error deleting application:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get applications for a tuition 
+app.get('/api/applications/tuition/:tuitionId', async (req, res) => {
+  try {
+    const database = client.db("tuitionDB");
+    const applicationsCollection = database.collection("applications");
+
+    const applications = await applicationsCollection
+      .find({ tuitionId: req.params.tuitionId })
+      .sort({ appliedAt: -1 })
+      .toArray();
+
+    res.json(applications);
+  } 
+  
+  catch (error) {
+    console.error('Error fetching applications:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
+
+
 //  Tutor's students
 app.get('/api/students/tutor/:tutorId', async (req, res) => {
   try {
