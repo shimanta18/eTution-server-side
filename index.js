@@ -33,6 +33,74 @@ async function run() {
     const userCollection = database.collection("users");
     const tuitionCollection = database.collection("tutions")
 
+
+    //  tuition by ID
+app.get('/api/tuitions/:id', async (req, res) => {
+  try {
+
+
+    const { ObjectId } = require('mongodb');
+    const database = client.db("tuitionDB");
+    const tuitionsCollection = database.collection("tuitions");
+    
+    const tuition = await tuitionsCollection.findOne({
+      _id: new ObjectId(req.params.id)
+    });
+    
+    if (!tuition) {
+      
+      return res.status(404).json({ error: 'Tuition not found' });
+    }
+    
+    res.json(tuition);
+  }
+  
+  catch (error) {
+    console.error('Error fetching tuition:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get all tuitions (for listing page)
+app.get('/api/tuitions/all', async (req, res) => {
+  try {
+    const database = client.db("tuitionDB");
+    const tuitionsCollection = database.collection("tuitions");
+    
+    const tuitions = await tuitionsCollection
+      .find({})
+      .sort({ postedAt: -1 })
+      .toArray();
+    
+    res.json(tuitions);
+  } 
+  
+  catch (error) {
+    console.error('Error fetching tuitions:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// Get approved tuitions only
+app.get('/api/tuitions/approved', async (req, res) => {
+  try {
+    const database = client.db("tuitionDB");
+    const tuitionsCollection = database.collection("tuitions");
+    
+    const tuitions = await tuitionsCollection
+      .find({ status: 'APPROVED' })
+      .sort({ postedAt: -1 })
+      .toArray();
+    
+    res.json(tuitions);
+  } 
+  
+  catch (error) {
+    console.error('Error fetching approved tuitions:', error);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
     // Routes section 
 
     app.post("/api/users/save", async (req, res)=> {
