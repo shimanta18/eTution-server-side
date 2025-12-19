@@ -61,8 +61,30 @@ app.get('/api/tuitions/:id', async (req, res) => {
   }
 });
 
+
+// Get single tutor user by ID
+app.get('/api/users/id/:id', async (req, res) => {
+    try {
+        const id = req.params.id;
+        
+        const query = { uid:id };
+       
+        
+        const result = await usersCollection.findOne(query);
+        
+        if (!result) {
+            return res.status(404).send({ message: "Tutor not found" });
+        }
+        res.send(result);
+    } 
+    
+    catch (error) {
+        res.status(500).send({ message: "Server error" });
+    }
+});
+
 // Get all tuitions (for listing page)
-app.get('/api/tuitions/all', async (req, res) => {
+app.get('/api/tuitions', async (req, res) => {
   try {
     const database = client.db("tuitionDB");
     const tuitionsCollection = database.collection("tuitions");
