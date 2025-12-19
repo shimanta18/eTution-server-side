@@ -27,12 +27,31 @@ app.get("/", (req, res) => {
 async function run() {
   try {
     await client.connect();
-    console.log(" Connected to MongoDB");
-
     const database = client.db("tuitionDB"); 
+    
+    
     const userCollection = database.collection("users");
-    const tuitionCollection = database.collection("tutions")
+    const tuitionCollection = database.collection("tuitions"); 
+    const applicationsCollection = database.collection("applications"); 
+    const paymentsCollection = database.collection("payments"); 
+    const studentsCollection = database.collection("students"); 
 
+    
+    app.get('/api/tuitions/:id', async (req, res) => {
+      try {
+        
+        const tuition = await tuitionCollection.findOne({
+          _id: new ObjectId(req.params.id)
+        });
+        if (!tuition) return res.status(404).json({ error: 'Tuition not found' });
+        res.json(tuition);
+      }
+      
+      
+      catch (error) {
+        res.status(500).json({ error: 'Server error' });
+      }
+    })
 
     //  tuition by ID
 app.get('/api/tuitions/:id', async (req, res) => {
@@ -62,15 +81,14 @@ app.get('/api/tuitions/:id', async (req, res) => {
 });
 
 
-// Get single tutor user by ID
+
 app.get('/api/users/id/:id', async (req, res) => {
     try {
         const id = req.params.id;
+        const query = { uid: id };
         
-        const query = { uid:id };
-       
         
-        const result = await usersCollection.findOne(query);
+        const result = await userCollection.findOne(query); 
         
         if (!result) {
             return res.status(404).send({ message: "Tutor not found" });
@@ -79,8 +97,42 @@ app.get('/api/users/id/:id', async (req, res) => {
     } 
     
     catch (error) {
-        res.status(500).send({ message: "Server error" });
+        res.status(500).send({ message: "Server error", error: error.message });
     }
+});
+
+
+
+app.put('/api/users/update/:uid', async (req, res) => {
+  try {
+    const uid = req.params.uid;
+    const { subject, qualifications, experience, location } = req.body;
+
+    const filter = { uid: uid };
+    const updateDoc = {
+      $set: {
+        subject: subject,
+        qualifications: qualifications,
+        experience: experience,
+        location: location,
+        updatedAt: new Date()
+      },
+    };
+
+    
+    const result = await userCollection.updateOne(filter, updateDoc);
+    
+    if (result.matchedCount === 0) {
+      return res.status(404).send({ message: "User not found" });
+    }
+    
+    res.send({ success: true, message: "Profile updated" });
+  } 
+  
+  catch (error) {
+    console.error("Update Error:", error);
+    res.status(500).send({ message: "Internal Server Error" });
+  }
 });
 
 // Get all tuitions (for listing page)
