@@ -8,7 +8,7 @@ const port = process.env.PORT || 5000;
 
 app.use(cors({
   origin: [
-    "https://steady-caramel-2df1a5.netlify.app",
+    "https://statuesque-dusk-73a1aa.netlify.app",
     "http://localhost:5173"
   ],
   credentials: true
@@ -362,6 +362,76 @@ app.get('/api/applications/tutor/:tutorId', async (req, res) => {
     console.error('Error fetching applications:', error);
     res.status(500).json({ error: 'Server error' });
   }
+});
+
+
+// admin dashboard
+
+app.get('/api/admin/users', async (req, res) => {
+   const users = await userCollection.find().toArray();
+   res.send(users);
+});
+app.get('/api/admin/stats', async (req, res) => {
+  try {
+    const totalUsers= await userCollection.countDocuments();
+    const students = await userCollection.countDocuments({ role: 'student' });
+    const tutors= await userCollection.countDocuments({ role: 'tutor' });
+    
+    
+    const paymentStats = await paymentsCollection.aggregate([
+      { $group: { _id: null, total: { $sum: "$amount" } } }
+    ]).toArray();
+
+    const totalTuitions = await tuitionCollection.countDocuments();
+    const pendingTuitions = await tuitionCollection.countDocuments({ status: 'PENDING' });
+    const approvedTuitions = await tuitionCollection.countDocuments({ status: 'APPROVED' });
+
+    
+    const recentTransactions = await paymentsCollection
+      .find()
+      .sort({ paidAt: -1 })
+      .limit(5)
+      .toArray();
+
+    res.json({
+      users: { total: totalUsers, students, tutors },
+      earnings: { total: paymentStats[0]?.total || 0 },
+      tuitions: { total: totalTuitions, pending: pendingTuitions, approved: approvedTuitions },
+      recentTransactions
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch admin stats' });
+  }
+});
+
+
+
+// Update User Role
+app.patch('/api/admin/users/:uid/role', async (req, res) => {
+  const { role } = req.body;
+  const result = await userCollection.updateOne(
+    { uid: req.params.uid },
+    { $set: { role, updatedAt: new Date() } }
+  );
+  res.send(result);
+});
+
+// Delete User
+app.delete('/api/admin/users/:uid', async (req, res) => {
+  const result = await userCollection.deleteOne({ uid: req.params.uid });
+  res.send(result);
+});
+
+
+
+
+app.patch('/api/admin/tuitions/:id/status', async (req, res) => {
+  const { status } = req.body;
+  const result = await tuitionCollection.updateOne(
+    { _id: new ObjectId(req.params.id) },
+    { $set: { status, updatedAt: new Date() } }
+  );
+  res.send(result);
 });
 
 //payment system
