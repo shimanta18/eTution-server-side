@@ -8,7 +8,7 @@ const port = process.env.PORT || 5000;
 
 app.use(cors({
   origin: [
-    "bejewelled-treacle-729cd6.netlify.app",
+    "steady-caramel-2df1a5.netlify.app",
     "http://localhost:5173"
   ],
   credentials: true
