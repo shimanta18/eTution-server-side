@@ -6,7 +6,13 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    "https://brilliant-druid-a8217e.netlify.app",
+    "http://localhost:5173"
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 // URI
@@ -250,6 +256,12 @@ app.get('/api/tuitions/approved', async (req, res) => {
         res.status(500).json({ error: "Server error" });
       }
     }); 
+
+    const BASE_URL = import.meta.env.PROD 
+  ? "https://your-live-backend.onrender.com" 
+  : "http://localhost:5000";
+
+fetch(`${BASE_URL}/api/tuitions/available`)
 
     //Tution
     app.post("/api/tuitions", async(req,res)=>{
