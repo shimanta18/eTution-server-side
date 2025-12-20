@@ -8,7 +8,7 @@ const port = process.env.PORT || 5000;
 
 app.use(cors({
   origin: [
-    "steady-caramel-2df1a5.netlify.app",
+    "https://steady-caramel-2df1a5.netlify.app",
     "http://localhost:5173"
   ],
   credentials: true
@@ -257,11 +257,7 @@ app.get('/api/tuitions/approved', async (req, res) => {
       }
     }); 
 
-    const BASE_URL = import.meta.env.PROD 
-  ? "https://your-live-backend.onrender.com" 
-  : "http://localhost:5000";
-
-fetch(`${BASE_URL}/api/tuitions/available`)
+  
 
     //Tution
     app.post("/api/tuitions", async(req,res)=>{
@@ -697,3 +693,5 @@ run().catch(console.dir);
 app.listen(port, () => {
   console.log(`Server running on port ${port}`); 
 });
+
+module.exports = app;
