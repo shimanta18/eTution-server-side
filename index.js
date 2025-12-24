@@ -9,7 +9,7 @@ const port = process.env.PORT || 5000;
 
 app.use(cors({
   origin: [
-    "https://magnificent-wisp-0ee689.netlify.app",
+    "https://timely-pastelito-4e8a99.netlify.app",
     "http://localhost:5173"
   ],
   credentials: true
