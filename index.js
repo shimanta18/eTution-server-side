@@ -4,10 +4,10 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 require('dotenv').config();
 
 const app = express();
-const port = process.env.PORT || 5000;
 
 app.use(cors({
   origin: [
+    "https://magnificent-wisp-0ee689.netlify.app",
     "https://magnificent-wisp-0ee689.netlify.app/",
     "http://localhost:5173"
   ],
