@@ -33,6 +33,51 @@ async function getDB() {
 }
 
 
+// --- TUITION ROUTES ---
+
+// 1. Post a new tuition (Fixes the "Error posting tuition")
+app.post("/api/tuitions", async (req, res) => {
+  try {
+    const database = await getDB();
+    const tuitionData = {
+      ...req.body,
+      status: req.body.status || 'PENDING',
+      postedAt: new Date().toISOString()
+    };
+    const result = await database.collection("tuitions").insertOne(tuitionData);
+    res.status(201).json(result);
+  } catch (error) {
+    console.error("Error posting tuition:", error);
+    res.status(500).json({ error: "Failed to post tuition" });
+  }
+});
+
+// 2. Get tuitions for a specific student
+app.get("/api/tuitions/student/:uid", async (req, res) => {
+  try {
+    const database = await getDB();
+    const query = { studentId: req.params.uid };
+    const result = await database.collection("tuitions").find(query).toArray();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch tuitions" });
+  }
+});
+
+// 3. Get all available (Pending) tuitions
+app.get('/api/tuitions/available', async (req, res) => {
+  try {
+    const database = await getDB();
+    const tuitions = await database.collection("tuitions")
+      .find({ status: 'PENDING' })
+      .sort({ postedAt: -1 })
+      .toArray();
+    res.json(tuitions);
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 
 app.get("/", (req, res) => res.send("Tuition server is running"));
 
