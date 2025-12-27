@@ -9,7 +9,7 @@ const port = process.env.PORT || 5000;
 
 app.use(cors({
   origin: [
-    "https://lambent-dasik-bd5d57.netlify.app",
+    "https://etuition.netlify.app",
     "http://localhost:5173"
   ],
   credentials: true
@@ -35,7 +35,7 @@ async function getDB() {
 
 // --- TUITION ROUTES ---
 
-// 1. Post a new tuition (Fixes the "Error posting tuition")
+
 app.post("/api/tuitions", async (req, res) => {
   try {
     const database = await getDB();
@@ -52,7 +52,7 @@ app.post("/api/tuitions", async (req, res) => {
   }
 });
 
-// 2. Get tuitions for a specific student
+
 app.get("/api/tuitions/student/:uid", async (req, res) => {
   try {
     const database = await getDB();
@@ -64,7 +64,7 @@ app.get("/api/tuitions/student/:uid", async (req, res) => {
   }
 });
 
-// 3. Get all available (Pending) tuitions
+
 app.get('/api/tuitions/available', async (req, res) => {
   try {
     const database = await getDB();
