@@ -64,6 +64,21 @@ app.get("/api/tuitions/student/:uid", async (req, res) => {
   }
 });
 
+app.post("/api/applications/tutor/:id", async (req, res) => {
+  try {
+    const database = await getDB();
+    const application = {
+      ...req.body,
+      appliedAt: new Date()
+    };
+    const result = await database.collection("applications").insertOne(application);
+    res.status(201).json(result);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to submit application" });
+  }
+});
+
+
 app.get("/api/tuitions/:id", async (req, res) => {
   try {
     const database = await getDB();
