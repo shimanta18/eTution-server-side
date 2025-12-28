@@ -64,31 +64,7 @@ app.get("/api/tuitions/student/:uid", async (req, res) => {
   }
 });
 
-app.post("/api/applications/tutor/:id", async (req, res) => {
-  try {
-    const database = await getDB();
-    const application = {
-      ...req.body,
-      appliedAt: new Date()
-    };
-    const result = await database.collection("applications").insertOne(application);
-    res.status(201).json(result);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to submit application" });
-  }
-});
 
-
-app.get("/api/applications/tutor/:uid", async (req, res) => {
-  try {
-    const database = await getDB();
-    const query = { studentId: req.params.uid }; 
-    const result = await database.collection("applications").find(query).toArray();
-    res.json(result);
-  } catch (error) {
-    res.status(500).json({ error: "Failed to fetch applications" });
-  }
-});
 
 app.get("/api/tuitions/:id", async (req, res) => {
   try {
@@ -108,6 +84,33 @@ app.get("/api/tuitions/:id", async (req, res) => {
 });
 
 
+
+app.get("/api/applications/tutor/:uid", async (req, res) => {
+  try {
+    const database = await getDB();
+    const query = { studentId: req.params.uid }; 
+    const result = await database.collection("applications").find(query).toArray();
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch applications" });
+  }
+});
+
+app.post("/api/applications/tutor/:id", async (req, res) => {
+  try {
+    const database = await getDB();
+    const application = {
+      ...req.body,
+      appliedAt: new Date()
+    };
+    const result = await database.collection("applications").insertOne(application);
+    res.status(201).json(result);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to submit application" });
+  }
+});
+
+
 app.get('/api/tuitions/available', async (req, res) => {
   try {
     const database = await getDB();
@@ -120,6 +123,12 @@ app.get('/api/tuitions/available', async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
+
+
+
+
+
 
 
 app.get("/", (req, res) => res.send("Tuition server is running"));
