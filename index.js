@@ -64,6 +64,23 @@ app.get("/api/tuitions/student/:uid", async (req, res) => {
   }
 });
 
+app.get("/api/tuitions/:id", async (req, res) => {
+  try {
+    const database = await getDB();
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) };
+    const result = await database.collection("tuitions").findOne(query);
+    
+    if (!result) {
+      return res.status(404).json({ error: "Tuition not found" });
+    }
+    res.json(result);
+  } catch (error) {
+    console.error("Error fetching single tuition:", error);
+    res.status(500).json({ error: "Invalid ID format or server error" });
+  }
+});
+
 
 app.get('/api/tuitions/available', async (req, res) => {
   try {
