@@ -6,7 +6,6 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
 
-
 app.use(cors({
   origin: [
     "https://etuition.netlify.app",
@@ -16,12 +15,10 @@ app.use(cors({
 }));
 app.use(express.json());
 
-
 const uri = process.env.MONGODB_URI;
 const client = new MongoClient(uri, {
   serverApi: { version: ServerApiVersion.v1, strict: true, deprecationErrors: true }
 });
-
 
 let db;
 async function getDB() {
@@ -32,9 +29,7 @@ async function getDB() {
   return db;
 }
 
-
-// --- TUITION ROUTES ---
-
+// --- TUITION ROUTES 
 
 app.post("/api/tuitions", async (req, res) => {
   try {
@@ -53,6 +48,20 @@ app.post("/api/tuitions", async (req, res) => {
 });
 
 
+app.get('/api/tuitions/available', async (req, res) => {
+  try {
+    const database = await getDB();
+    const tuitions = await database.collection("tuitions")
+      .find({ status: 'PENDING' })
+      .sort({ postedAt: -1 })
+      .toArray();
+    res.json(tuitions);
+  } catch (error) {
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+
 app.get("/api/tuitions/student/:uid", async (req, res) => {
   try {
     const database = await getDB();
@@ -63,7 +72,6 @@ app.get("/api/tuitions/student/:uid", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch tuitions" });
   }
 });
-
 
 
 app.get("/api/tuitions/:id", async (req, res) => {
@@ -83,6 +91,7 @@ app.get("/api/tuitions/:id", async (req, res) => {
   }
 });
 
+// --- APPLICATION ROUTES ---
 
 
 app.get("/api/applications/tutor/:uid", async (req, res) => {
@@ -111,29 +120,6 @@ app.post("/api/applications/tutor/:id", async (req, res) => {
 });
 
 
-app.get('/api/tuitions/available', async (req, res) => {
-  try {
-    const database = await getDB();
-    const tuitions = await database.collection("tuitions")
-      .find({ status: 'PENDING' })
-      .sort({ postedAt: -1 })
-      .toArray();
-    res.json(tuitions);
-  } catch (error) {
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-
-
-
-
-
-
-
-app.get("/", (req, res) => res.send("Tuition server is running"));
-
-// Get Users by Role
 app.get('/api/users/role/:role', async (req, res) => {
   try {
     const database = await getDB();
@@ -144,7 +130,7 @@ app.get('/api/users/role/:role', async (req, res) => {
   }
 });
 
-// Save User
+
 app.post("/api/users/save", async (req, res) => {
   try {
     const { uid, email, name, role, photoURL } = req.body;
@@ -160,7 +146,7 @@ app.post("/api/users/save", async (req, res) => {
   }
 });
 
-// Get User by UID
+
 app.get("/api/users/:uid", async (req, res) => {
   try {
     const database = await getDB();
@@ -173,8 +159,9 @@ app.get("/api/users/:uid", async (req, res) => {
 });
 
 
-module.exports = app;
+app.get("/", (req, res) => res.send("Tuition server is running"));
 
+module.exports = app;
 
 if (process.env.NODE_ENV !== 'production') {
   app.listen(port, () => console.log(`Server running on port ${port}`));
