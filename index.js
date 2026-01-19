@@ -91,7 +91,31 @@ app.get("/api/tuitions/:id", async (req, res) => {
   }
 });
 
-// --- APPLICATION ROUTES ---
+//  APPLICATION ROUTES 
+
+
+app.post("/api/applications", async(req,res)=>{
+  try{
+    const database = await getDB()
+    const application={
+      ...req.body,
+      createdAt:new Date().toISOString()
+    }
+
+    const result = await database.collection("applications").insertOne(application)
+  res.status(201).json({
+success:true,
+message: "Application submitted successfully",
+      applicationId: result.insertedId 
+  })
+
+}
+catch(error){
+    console.error("Error submitting application:", error);
+    res.status(500).json({ error: "Failed to submit application" })
+  }
+  
+})
 
 
 app.get("/api/applications/tutor/:uid", async (req, res) => {
