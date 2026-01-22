@@ -11,6 +11,7 @@ app.use(cors({
     "https://etuition.netlify.app",
     "http://localhost:5173"
   ],
+
   credentials: true
 }));
 app.use(express.json());
@@ -29,7 +30,7 @@ async function getDB() {
   return db;
 }
 
-// --- TUITION ROUTES 
+// TUITION ROUTES 
 
 app.post("/api/tuitions", async (req, res) => {
   try {
@@ -158,18 +159,32 @@ app.get('/api/users/role/:role', async (req, res) => {
 app.post("/api/users/save", async (req, res) => {
   try {
     const { uid, email, name, role, photoURL } = req.body;
+if(!uid||!email){
+  return res.status(400).json({error:"UID and email are required"})
+}
+
     const database = await getDB();
     const result = await database.collection("users").updateOne(
       { uid },
-      { $set: { email, name, role, photoURL, updatedAt: new Date() }, $setOnInsert: { createdAt: new Date() } },
+      {  $set: { 
+          email, 
+          name: name || email.split('@')[0], 
+          role: role || 'student', 
+          photoURL: photoURL || null,
+          updatedAt: new Date() 
+        }, $setOnInsert: { createdAt: new Date() } },
       { upsert: true }
     );
-    res.json(result);
+  res.status(200).json({ 
+      success: true, 
+      message: "User saved successfully",
+      result 
+    });
   } catch (error) {
+    console.error("Error saving user:", error);
     res.status(500).json({ error: error.message });
   }
 });
-
 
 app.get("/api/users/:uid", async (req, res) => {
   try {
@@ -177,7 +192,8 @@ app.get("/api/users/:uid", async (req, res) => {
     const user = await database.collection("users").findOne({ uid: req.params.uid });
     if (!user) return res.status(404).json({ error: 'User not found' });
     res.json(user);
-  } catch (error) {
+  } 
+  catch (error) {
     res.status(500).json({ error: "Server error" });
   }
 });
