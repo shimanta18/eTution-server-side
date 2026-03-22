@@ -199,6 +199,187 @@ app.get("/api/users/:uid", async (req, res) => {
 });
 
 
+//DASHBOARD STATS
+
+app.get("/api/stats",async(req,res)=>{
+  try{
+    const database= await getDB()
+
+    const allUsers=await database.collection("users").find().toArray()
+    const students = allUsers.fillter(u=>u.role==='student').length
+    const tutors= allUsers.fillter(u=>u.role==='tutor').length
+
+
+    //count tuitions
+
+    const allTuitions= await database.collection("tuitions").find().toArray()
+    const pending=allTuitions.fillter(t=>t.status==="PENDING").length
+    const approved=allTuitions.fillter(t=>t.status==="APPROVED").length
+
+    //transaction
+
+    const recentTransaction=[]
+
+    const stats={
+      users:{
+        total:allUsers.length,
+        students:students,
+        tutors:tutors
+      },
+
+      tuitions:{
+        total:allTuitions.length,
+        approved:approved,
+        pending:pending
+      },
+
+      earnings:{
+        total:0
+      },
+
+      recentTransaction:recentTransaction
+    };
+
+    res.json(stats)
+  }
+  catch(error){
+    console.error("Error fetching stats:",error)
+    res.status(500).json({error:"Failed to fetch stats"})
+  };
+  
+})
+
+//get all users (ADMIN)
+
+app.get("/api/admin/users",async(req,res)=>{
+  try{
+    const database= await getDB()
+    const users = await database.collection("users")
+    .find()
+    .sort({postedAt:-1})
+    .toArray()
+    res.json(users)
+  }
+  catch(error){
+    console.error("Error fetching users:",error)
+    res.stats(500).json({error:"FAiled to fetch Users"})
+  };
+  
+})
+
+//update User role (Admin)
+app.patch("api/admin/users/:uid/role",async(req,res)=>{
+  try{
+   const{uid}=req.params;
+   const {role}=req.body;
+  
+if(!['student ','tutor','admin'].includes(role)){
+  return res.status(400 ).json({error:"Invalid role"})
+}
+
+const database= await getDB()
+const result = await database.collection("users").updateOne(
+  {uid},
+  {$set:{role,updatedAt:new Date()}}
+);
+
+if(result.matchedCount===0){
+  return res.status(404).json({error:"User not found"})
+}
+
+res.json({success:true,message:"Role updated succeessfully"});
+}
+  catch(error){
+    console.error("Error fetching users:",error)
+
+    res.status(500).json ({error: "Failed to update role"})
+  }
+})
+
+
+app.delete("/api/admin/users/:uid", async (req, res) => {
+  try {
+    const { uid } = req.params;
+    const database = await getDB();
+    
+    const result = await database.collection("users").deleteOne({ uid });
+    
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    
+    res.json({ success: true, message: "User deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    res.status(500).json({ error: "Failed to delete user" });
+  }
+});
+
+// Get All Tuitions (Admin)
+app.get("/api/admin/tuitions", async (req, res) => {
+  try {
+    const database = await getDB();
+    const tuitions = await database.collection("tuitions")
+      .find()
+      .sort({ postedAt: -1 })
+      .toArray();
+    res.json(tuitions);
+  } catch (error) {
+    console.error("Error fetching tuitions:", error);
+    res.status(500).json({ error: "Failed to fetch tuitions" });
+  }
+});
+
+// Update Tuition Status (Admin)
+app.patch("/api/admin/tuitions/:id/status", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+    
+    if (!['PENDING', 'APPROVED', 'REJECTED'].includes(status)) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+    
+    const database = await getDB();
+    const result = await database.collection("tuitions").updateOne(
+      { _id: new ObjectId(id) },
+      { $set: { status, updatedAt: new Date().toISOString() } }
+    );
+    
+    if (result.matchedCount === 0) {
+      return res.status(404).json({ error: "Tuition not found" });
+    }
+    
+    res.json({ success: true, message: "Status updated successfully" });
+  } catch (error) {
+    console.error("Error updating tuition status:", error);
+    res.status(500).json({ error: "Failed to update status" });
+  }
+});
+
+// Get All Transactions (Admin) 
+app.get("/api/admin/transactions", async (req, res) => {
+  try {
+    // TODO: Replace with real transactions from  database
+    const mockTransactions = [
+      {
+        studentName: "John Doe",
+        tutorName: "Jane Smith",
+        amount: 5000,
+        paidAt: new Date().toISOString()
+      }
+    ];
+    
+    res.json(mockTransactions);
+  } catch (error) {
+    console.error("Error fetching transactions:", error);
+    res.status(500).json({ error: "Failed to fetch transactions" });
+  }
+});
+
+
+
+
 app.get("/", (req, res) => res.send("Tuition server is running"));
 
 module.exports = app;
