@@ -268,12 +268,12 @@ app.get("/api/admin/users",async(req,res)=>{
 })
 
 //update User role (Admin)
-app.patch("api/admin/users/:uid/role",async(req,res)=>{
+app.patch("/api/admin/users/:uid/role",async(req,res)=>{
   try{
    const{uid}=req.params;
    const {role}=req.body;
   
-if(!['student ','tutor','admin'].includes(role)){
+if (!['student', 'tutor', 'admin'].includes(role)){
   return res.status(400 ).json({error:"Invalid role"})
 }
 
