@@ -378,7 +378,83 @@ app.get("/api/admin/transactions", async (req, res) => {
 });
 
 
+//Get Payments for student
+app.get("/api/payments/student/:uid",async(res,req)=>{
+  try{
+    const database=await getDB()
+    const payments=await database.collection("payments")
 
+    .find({studentId:req.params.uid})
+    .sort({paidAt:-1})
+    .toArray()
+    res.json(payments)
+  }
+
+  catch(error){
+console.error("Error fetching student payments:", error)
+res.status(500).json({error:"Failed to fetch payments"})
+  }
+})
+
+//Get Payment received
+app.get("/api/payments/tutor/:uid",async(res,req)=>{
+  try{
+    const database= await getDB()
+    const payments=await database.collection("payments")
+
+    .find({tutorId:req.params.uid})
+    .sort({paidAt:-1})
+    .toArray()
+    res.json(payments)
+  }
+
+  catch(error){
+    console.error("Error fetching tutor payments:",error)
+    res.status(500).json({})
+  }
+})
+
+//create payment
+
+app.post("/api/payments",async(res,req)=>{
+  try{
+    const database= await getDB()
+    const payment={
+      ...req.body,
+      status:'completed',
+      paidAt:new Date().toISOString,
+      createdAt:new Date().toISOString
+    };
+
+    const result=await database.collection("payments").insertOne(payment)
+    res.status(201).json({
+      success:true,
+      message:"Payment recorded successfully",
+      paymentId:result.insertedId
+    })
+
+  }catch(error){
+      console.error("Error Creating Payment",error)
+      res.status(500).json({error:"Failed to create payment"})
+    }
+  })
+
+  //Get All payments (ADMIN PANEL)
+  app.get("/api/admin/payments",async(req,res)=>{
+    try{
+      const database= await getDB()
+      const payments=await database.collection("payments")
+      .find()
+      .$sort({paidAt:-1})
+      .toArray()
+      res.json(payments)
+    }
+
+    catch(error){
+      console.error("Error fetching all payments:",error)
+      res.status(500).json({error:"Failed to fetch payments"})
+    }
+  })
 
 app.get("/", (req, res) => res.send("Tuition server is running"));
 
