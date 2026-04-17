@@ -92,6 +92,71 @@ app.get("/api/tuitions/:id", async (req, res) => {
   }
 });
 
+
+
+app.get("/api/applications/student/:uid", async (req, res) => {
+  try {
+    const database = await getDB();
+
+    
+    const tuitions = await database.collection("tuitions")
+      .find({ studentId: req.params.uid })
+      .toArray();
+
+    const tuitionIds = tuitions.map(t => t._id.toString());
+
+    if (tuitionIds.length === 0) return res.json([]);
+console.log("Student UID:", req.params.uid);
+    console.log("Found tuitions:", tuitionIds);
+
+        const allApps = await database.collection("applications").find().toArray();
+    console.log("All applications tuitionIds:", allApps.map(a => a.tuitionId));
+
+    if (tuitionIds.length === 0) return res.json([]);
+
+    const applications = await database.collection("applications")
+      .find({ tuitionId: { $in: tuitionIds } })
+      .sort({ appliedAt: -1 })
+      .toArray();
+
+console.log("Matched applications:", applications.length)
+
+    res.json(applications);
+  } catch (error) {
+    console.error("Error fetching student applications:", error);
+    res.status(500).json({ error: "Failed to fetch applications" });
+  }
+});
+
+
+app.patch("/api/applications/:id/status",async(req,res)=>{
+  try{
+    const{id}= req.params
+    const{status}=req.body
+
+   if (!['ACCEPTED', 'REJECTED'].includes(status)) {
+      return res.status(400).json({ error: "Invalid status" });
+    }
+
+    const database=await getDB()
+    const result= await database.collection("applications").updateOne(
+      { _id : new ObjectId(id)},
+      {$set:{status, updatedAt:new Date().toISOString()}}
+    )
+
+    if(result.matchedCount===0){
+      return res.json(500).json({error:"application not found"})
+    }
+
+    res.json({success:true, message:`Application ${status.toLowerCase()}`})
+  }
+
+  catch(error){
+    console.error("Error updating application status:",error)
+    res.json(500).json({error: "failed to update application"})
+  }
+})
+
 //  APPLICATION ROUTES 
 
 
@@ -122,7 +187,7 @@ catch(error){
 app.get("/api/applications/tutor/:uid", async (req, res) => {
   try {
     const database = await getDB();
-    const query = { studentId: req.params.uid }; 
+    const query = { tutorId: req.params.uid }; 
     const result = await database.collection("applications").find(query).toArray();
     res.json(result);
   } catch (error) {
@@ -206,15 +271,15 @@ app.get("/api/stats",async(req,res)=>{
     const database= await getDB()
 
     const allUsers=await database.collection("users").find().toArray()
-    const students = allUsers.fillter(u=>u.role==='student').length
-    const tutors= allUsers.fillter(u=>u.role==='tutor').length
+    const students = allUsers.filter(u=>u.role==='student').length
+    const tutors= allUsers.filter(u=>u.role==='tutor').length
 
 
     //count tuitions
 
     const allTuitions= await database.collection("tuitions").find().toArray()
-    const pending=allTuitions.fillter(t=>t.status==="PENDING").length
-    const approved=allTuitions.fillter(t=>t.status==="APPROVED").length
+    const pending=allTuitions.filter(t=>t.status==="PENDING").length
+    const approved=allTuitions.filter(t=>t.status==="APPROVED").length
 
     //transaction
 
@@ -262,7 +327,7 @@ app.get("/api/admin/users",async(req,res)=>{
   }
   catch(error){
     console.error("Error fetching users:",error)
-    res.stats(500).json({error:"FAiled to fetch Users"})
+    res.status(500).json({error:"FAiled to fetch Users"})
   };
   
 })
@@ -357,10 +422,24 @@ app.patch("/api/admin/tuitions/:id/status", async (req, res) => {
   }
 });
 
+//delete tuitions 
+app.delete("/api/tuitions/:id", async (req, res) => {
+  try {
+    const database = await getDB();
+    const result = await database.collection("tuitions")
+      .deleteOne({ _id: new ObjectId(req.params.id) });
+    if (result.deletedCount === 0)
+      return res.status(404).json({ error: "Tution not found" });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to delete tution" });
+  }
+});
+
 // Get All Transactions (Admin) 
 app.get("/api/admin/transactions", async (req, res) => {
   try {
-    // TODO: Replace with real transactions from  database
+    // unreal transaction
     const mockTransactions = [
       {
         studentName: "John Doe",
@@ -379,7 +458,7 @@ app.get("/api/admin/transactions", async (req, res) => {
 
 
 //Get Payments for student
-app.get("/api/payments/student/:uid",async(res,req)=>{
+app.get("/api/payments/student/:uid",async(req,res)=>{
   try{
     const database=await getDB()
     const payments=await database.collection("payments")
@@ -397,7 +476,7 @@ res.status(500).json({error:"Failed to fetch payments"})
 })
 
 //Get Payment received
-app.get("/api/payments/tutor/:uid",async(res,req)=>{
+app.get("/api/payments/tutor/:uid",async(req,res)=>{
   try{
     const database= await getDB()
     const payments=await database.collection("payments")
@@ -416,14 +495,14 @@ app.get("/api/payments/tutor/:uid",async(res,req)=>{
 
 //create payment
 
-app.post("/api/payments",async(res,req)=>{
+app.post("/api/payments",async(req,res)=>{
   try{
     const database= await getDB()
     const payment={
       ...req.body,
       status:'completed',
-      paidAt:new Date().toISOString,
-      createdAt:new Date().toISOString
+      paidAt:new Date().toISOString(),
+      createdAt:new Date().toISOString()
     };
 
     const result=await database.collection("payments").insertOne(payment)
@@ -445,7 +524,7 @@ app.post("/api/payments",async(res,req)=>{
       const database= await getDB()
       const payments=await database.collection("payments")
       .find()
-      .$sort({paidAt:-1})
+      .sort({paidAt:-1})
       .toArray()
       res.json(payments)
     }
