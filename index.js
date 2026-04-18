@@ -145,7 +145,7 @@ app.patch("/api/applications/:id/status",async(req,res)=>{
     )
 
     if(result.matchedCount===0){
-      return res.json(500).json({error:"application not found"})
+      return res.status(500).json({error:"application not found"})
     }
 
     res.json({success:true, message:`Application ${status.toLowerCase()}`})
@@ -153,7 +153,7 @@ app.patch("/api/applications/:id/status",async(req,res)=>{
 
   catch(error){
     console.error("Error updating application status:",error)
-    res.json(500).json({error: "failed to update application"})
+    res.status(500).json({error: "failed to update application"})
   }
 })
 
